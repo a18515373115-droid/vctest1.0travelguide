@@ -1,6 +1,7 @@
 // ========== API Configuration ==========
-const DEEPSEEK_API_URL = 'https://api.deepseek.com/v1/chat/completions';
-const DEEPSEEK_API_KEY = 'sk-70b75440145a43b6b690b85b5c56632d';
+// Backend API URL (deployed on Render.com with HTTPS)
+// ⚠️ After deploying to Render, replace this URL with your actual Render URL
+const API_BASE_URL = 'https://your-app-name.onrender.com';
 
 // ========== DOM Elements ==========
 const cityInput = document.getElementById('cityInput');
@@ -108,29 +109,16 @@ async function generateItinerary() {
     let apiError = '';
 
     try {
-        const prompt = `为${city}生成3天旅行攻略，仅返回JSON，不要其他文字。格式如下：
-{"desc":"一句诗意的城市描述","overview":[{"icon":"🏙️","label":"城市标签","value":"值"},{"icon":"🌡️","label":"最佳时节","value":"值"},{"icon":"💰","label":"人均预算","value":"值"},{"icon":"🚇","label":"出行方式","value":"值"}],"days":[{"theme":"主题词·描述","schedule":[{"time":"08:00","icon":"🌅","title":"真实景点名","desc":"50字内描述"},{"time":"10:00","icon":"🏛️","title":"景点","desc":"描述"},{"time":"12:00","icon":"🍜","title":"午餐·真实餐厅名","desc":"推荐菜品"},{"time":"14:00","icon":"🎨","title":"景点","desc":"描述"},{"time":"16:30","icon":"🏮","title":"景点","desc":"描述"},{"time":"18:30","icon":"🍲","title":"晚餐·真实餐厅名","desc":"推荐菜品"}]}],"tips":[{"icon":"🎫","title":"标题","text":"30字内实用建议"}]}
-要求：1.全部中文 2.使用真实地名和餐厅名 3.每天6个行程 4.共4条贴士 5.3天覆盖不同区域主题`;
-
-        // Create AbortController for timeout (120s for AI generation)
+        // Call backend API (Render.com with HTTPS) - API Key is safely stored on the server
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 120000);
 
-        const response = await fetch(DEEPSEEK_API_URL, {
+        const response = await fetch(`${API_BASE_URL}/api/generate`, {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${DEEPSEEK_API_KEY}`
+                'Content-Type': 'application/json'
             },
-            body: JSON.stringify({
-                model: 'deepseek-chat',
-                messages: [
-                    { role: 'system', content: 'You are a helpful travel planning assistant. Always respond with valid JSON only.' },
-                    { role: 'user', content: prompt }
-                ],
-                temperature: 0.7,
-                max_tokens: 3000
-            }),
+            body: JSON.stringify({ city }),
             signal: controller.signal
         });
 
@@ -138,30 +126,16 @@ async function generateItinerary() {
 
         const json = await response.json();
 
-        if (json.error) {
-            apiError = json.error.message || 'API error';
-            console.warn('DeepSeek API error:', apiError);
-        } else if (json.choices && json.choices[0]) {
-            const content = json.choices[0].message.content;
-
-            // Extract JSON from response
-            let jsonStr = content;
-            const jsonMatch = content.match(/```json\s*([\s\S]*?)\s*```/);
-            if (jsonMatch) {
-                jsonStr = jsonMatch[1];
-            }
-            const braceMatch = jsonStr.match(/\{[\s\S]*\}/);
-            if (braceMatch) {
-                jsonStr = braceMatch[0];
-            }
-
-            const itinerary = JSON.parse(jsonStr);
+        if (json.success && json.data) {
             useAI = true;
             loading.style.display = 'none';
-            renderResult(city, itinerary, true);
+            renderResult(city, json.data, true);
             result.style.display = 'block';
             result.scrollIntoView({ behavior: 'smooth', block: 'start' });
             return;
+        } else if (json.error) {
+            apiError = json.error;
+            console.warn('Backend API error:', apiError);
         }
     } catch (error) {
         if (error.name === 'AbortError') {
