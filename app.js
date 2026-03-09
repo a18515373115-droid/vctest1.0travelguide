@@ -1,3 +1,6 @@
+// ========== API Configuration ==========
+const API_BASE_URL = 'http://8.219.164.49:3000';
+
 // ========== DOM Elements ==========
 const cityInput = document.getElementById('cityInput');
 const loading = document.getElementById('loading');
@@ -87,7 +90,7 @@ function generateRandomItinerary(city) {
 }
 
 // ========== Main Generate Function ==========
-function generateItinerary() {
+async function generateItinerary() {
     const city = cityInput.value.trim();
     if (!city) {
         cityInput.focus();
@@ -100,24 +103,52 @@ function generateItinerary() {
     result.style.display = 'none';
     loading.style.display = 'block';
 
-    // Simulate loading delay
-    setTimeout(() => {
-        loading.style.display = 'none';
-        
-        // Get data (built-in or generated)
-        const data = cityData[city] || generateRandomItinerary(city);
-        
-        renderResult(city, data);
-        result.style.display = 'block';
-        result.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }, 1500);
+    let useAI = false;
+    let apiError = '';
+
+    try {
+        // Try to call backend API
+        const response = await fetch(`${API_BASE_URL}/api/generate`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ city })
+        });
+
+        const json = await response.json();
+
+        if (json.success && json.data) {
+            // API returned successfully, use AI-generated data
+            useAI = true;
+            loading.style.display = 'none';
+            renderResult(city, json.data, true);
+            result.style.display = 'block';
+            result.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            return;
+        } else {
+            apiError = json.error || json.detail || 'Unknown API error';
+            console.warn('API returned error:', apiError);
+        }
+    } catch (error) {
+        apiError = error.message;
+        console.warn('API call failed, falling back to local data:', error.message);
+    }
+
+    // Fallback: use local data or random generation
+    loading.style.display = 'none';
+    const data = cityData[city] || generateRandomItinerary(city);
+    renderResult(city, data, false);
+    result.style.display = 'block';
+    result.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 // ========== Render Functions ==========
-function renderResult(city, data) {
+function renderResult(city, data, isAI = false) {
     // Header
     document.getElementById('resultTitle').textContent = `📍 ${city} · 3天旅行攻略`;
-    document.getElementById('resultDesc').textContent = data.desc;
+    const sourceTag = isAI
+        ? '<span style="display:inline-block;background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;font-size:0.75rem;padding:2px 10px;border-radius:20px;margin-left:8px;vertical-align:middle;">🤖 AI 智能生成</span>'
+        : '<span style="display:inline-block;background:#f0f0f0;color:#888;font-size:0.75rem;padding:2px 10px;border-radius:20px;margin-left:8px;vertical-align:middle;">📦 本地推荐数据</span>';
+    document.getElementById('resultDesc').innerHTML = data.desc + sourceTag;
 
     // Overview Card
     const overviewCard = document.getElementById('overviewCard');
