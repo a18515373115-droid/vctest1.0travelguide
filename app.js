@@ -1,7 +1,7 @@
 // ========== API Configuration ==========
 // Backend API URL (deployed on Render.com with HTTPS)
 // ⚠️ After deploying to Render, replace this URL with your actual Render URL
-const API_BASE_URL = 'https://your-app-name.onrender.com';
+const API_BASE_URL = 'https://vctest1-0travelguide.onrender.com';
 
 // ========== DOM Elements ==========
 const cityInput = document.getElementById('cityInput');
