@@ -108,46 +108,13 @@ async function generateItinerary() {
     let apiError = '';
 
     try {
-        const prompt = `You are a professional travel planner. Please generate a detailed 3-day travel itinerary for ${city}, China. 
+        const prompt = `为${city}生成3天旅行攻略，仅返回JSON，不要其他文字。格式如下：
+{"desc":"一句诗意的城市描述","overview":[{"icon":"🏙️","label":"城市标签","value":"值"},{"icon":"🌡️","label":"最佳时节","value":"值"},{"icon":"💰","label":"人均预算","value":"值"},{"icon":"🚇","label":"出行方式","value":"值"}],"days":[{"theme":"主题词·描述","schedule":[{"time":"08:00","icon":"🌅","title":"真实景点名","desc":"50字内描述"},{"time":"10:00","icon":"🏛️","title":"景点","desc":"描述"},{"time":"12:00","icon":"🍜","title":"午餐·真实餐厅名","desc":"推荐菜品"},{"time":"14:00","icon":"🎨","title":"景点","desc":"描述"},{"time":"16:30","icon":"🏮","title":"景点","desc":"描述"},{"time":"18:30","icon":"🍲","title":"晚餐·真实餐厅名","desc":"推荐菜品"}]}],"tips":[{"icon":"🎫","title":"标题","text":"30字内实用建议"}]}
+要求：1.全部中文 2.使用真实地名和餐厅名 3.每天6个行程 4.共4条贴士 5.3天覆盖不同区域主题`;
 
-Please respond in the following strict JSON format (respond ONLY with JSON, no other text):
-{
-    "desc": "A one-sentence poetic description of the city in Chinese",
-    "overview": [
-        {"icon": "🏙️", "label": "城市标签", "value": "city tags in Chinese"},
-        {"icon": "🌡️", "label": "最佳时节", "value": "best season in Chinese"},
-        {"icon": "💰", "label": "人均预算", "value": "budget range in Chinese like 3000-5000元"},
-        {"icon": "🚇", "label": "出行方式", "value": "transport suggestion in Chinese"}
-    ],
-    "days": [
-        {
-            "theme": "Day theme in Chinese, format: 主题词 · 描述",
-            "schedule": [
-                {"time": "08:00", "icon": "🌅", "title": "Specific real place name in Chinese", "desc": "Detailed description in Chinese (50-80 chars)"},
-                {"time": "10:00", "icon": "🏛️", "title": "Another real place", "desc": "Description in Chinese"},
-                {"time": "12:00", "icon": "🍜", "title": "午餐 · Specific real restaurant name in Chinese", "desc": "What to eat in Chinese"},
-                {"time": "14:00", "icon": "🎨", "title": "Afternoon spot in Chinese", "desc": "Description in Chinese"},
-                {"time": "16:30", "icon": "🏮", "title": "Another spot in Chinese", "desc": "Description in Chinese"},
-                {"time": "18:30", "icon": "🍲", "title": "晚餐 · Specific real restaurant name in Chinese", "desc": "What to eat in Chinese"}
-            ]
-        }
-    ],
-    "tips": [
-        {"icon": "🎫", "title": "Tip title in Chinese", "text": "Practical tip in Chinese (30-60 chars)"}
-    ]
-}
-
-Requirements:
-1. All content must be in Chinese
-2. Use REAL, SPECIFIC place names, restaurant names, and dish names
-3. Each day should have 6 schedule items
-4. Provide 4 practical tips
-5. The 3 days should cover different areas/themes of the city
-6. Restaurant recommendations should be real, well-known local restaurants`;
-
-        // Create AbortController for timeout
+        // Create AbortController for timeout (120s for AI generation)
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 60000);
+        const timeoutId = setTimeout(() => controller.abort(), 120000);
 
         const response = await fetch(DEEPSEEK_API_URL, {
             method: 'POST',
@@ -162,7 +129,7 @@ Requirements:
                     { role: 'user', content: prompt }
                 ],
                 temperature: 0.7,
-                max_tokens: 4000
+                max_tokens: 3000
             }),
             signal: controller.signal
         });
