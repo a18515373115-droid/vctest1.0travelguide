@@ -1,5 +1,6 @@
 // ========== API Configuration ==========
-const API_BASE_URL = 'http://8.219.164.49:3000';
+const DEEPSEEK_API_URL = 'https://api.deepseek.com/v1/chat/completions';
+const DEEPSEEK_API_KEY = 'sk-70b75440145a43b6b690b85b5c56632d';
 
 // ========== DOM Elements ==========
 const cityInput = document.getElementById('cityInput');
@@ -107,30 +108,101 @@ async function generateItinerary() {
     let apiError = '';
 
     try {
-        // Try to call backend API
-        const response = await fetch(`${API_BASE_URL}/api/generate`, {
+        const prompt = `You are a professional travel planner. Please generate a detailed 3-day travel itinerary for ${city}, China. 
+
+Please respond in the following strict JSON format (respond ONLY with JSON, no other text):
+{
+    "desc": "A one-sentence poetic description of the city in Chinese",
+    "overview": [
+        {"icon": "🏙️", "label": "城市标签", "value": "city tags in Chinese"},
+        {"icon": "🌡️", "label": "最佳时节", "value": "best season in Chinese"},
+        {"icon": "💰", "label": "人均预算", "value": "budget range in Chinese like 3000-5000元"},
+        {"icon": "🚇", "label": "出行方式", "value": "transport suggestion in Chinese"}
+    ],
+    "days": [
+        {
+            "theme": "Day theme in Chinese, format: 主题词 · 描述",
+            "schedule": [
+                {"time": "08:00", "icon": "🌅", "title": "Specific real place name in Chinese", "desc": "Detailed description in Chinese (50-80 chars)"},
+                {"time": "10:00", "icon": "🏛️", "title": "Another real place", "desc": "Description in Chinese"},
+                {"time": "12:00", "icon": "🍜", "title": "午餐 · Specific real restaurant name in Chinese", "desc": "What to eat in Chinese"},
+                {"time": "14:00", "icon": "🎨", "title": "Afternoon spot in Chinese", "desc": "Description in Chinese"},
+                {"time": "16:30", "icon": "🏮", "title": "Another spot in Chinese", "desc": "Description in Chinese"},
+                {"time": "18:30", "icon": "🍲", "title": "晚餐 · Specific real restaurant name in Chinese", "desc": "What to eat in Chinese"}
+            ]
+        }
+    ],
+    "tips": [
+        {"icon": "🎫", "title": "Tip title in Chinese", "text": "Practical tip in Chinese (30-60 chars)"}
+    ]
+}
+
+Requirements:
+1. All content must be in Chinese
+2. Use REAL, SPECIFIC place names, restaurant names, and dish names
+3. Each day should have 6 schedule items
+4. Provide 4 practical tips
+5. The 3 days should cover different areas/themes of the city
+6. Restaurant recommendations should be real, well-known local restaurants`;
+
+        // Create AbortController for timeout
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 60000);
+
+        const response = await fetch(DEEPSEEK_API_URL, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ city })
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${DEEPSEEK_API_KEY}`
+            },
+            body: JSON.stringify({
+                model: 'deepseek-chat',
+                messages: [
+                    { role: 'system', content: 'You are a helpful travel planning assistant. Always respond with valid JSON only.' },
+                    { role: 'user', content: prompt }
+                ],
+                temperature: 0.7,
+                max_tokens: 4000
+            }),
+            signal: controller.signal
         });
+
+        clearTimeout(timeoutId);
 
         const json = await response.json();
 
-        if (json.success && json.data) {
-            // API returned successfully, use AI-generated data
+        if (json.error) {
+            apiError = json.error.message || 'API error';
+            console.warn('DeepSeek API error:', apiError);
+        } else if (json.choices && json.choices[0]) {
+            const content = json.choices[0].message.content;
+
+            // Extract JSON from response
+            let jsonStr = content;
+            const jsonMatch = content.match(/```json\s*([\s\S]*?)\s*```/);
+            if (jsonMatch) {
+                jsonStr = jsonMatch[1];
+            }
+            const braceMatch = jsonStr.match(/\{[\s\S]*\}/);
+            if (braceMatch) {
+                jsonStr = braceMatch[0];
+            }
+
+            const itinerary = JSON.parse(jsonStr);
             useAI = true;
             loading.style.display = 'none';
-            renderResult(city, json.data, true);
+            renderResult(city, itinerary, true);
             result.style.display = 'block';
             result.scrollIntoView({ behavior: 'smooth', block: 'start' });
             return;
-        } else {
-            apiError = json.error || json.detail || 'Unknown API error';
-            console.warn('API returned error:', apiError);
         }
     } catch (error) {
-        apiError = error.message;
-        console.warn('API call failed, falling back to local data:', error.message);
+        if (error.name === 'AbortError') {
+            apiError = 'Request timeout';
+        } else {
+            apiError = error.message;
+        }
+        console.warn('API call failed, falling back to local data:', apiError);
     }
 
     // Fallback: use local data or random generation
