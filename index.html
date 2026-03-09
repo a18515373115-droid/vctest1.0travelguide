@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🌍 AI 旅行攻略生成器</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <!-- Background decoration -->
+    <div class="bg-decoration">
+        <div class="circle circle-1"></div>
+        <div class="circle circle-2"></div>
+        <div class="circle circle-3"></div>
+    </div>
+
+    <!-- Header -->
+    <header class="header">
+        <div class="logo">🌍 旅行攻略生成器</div>
+        <p class="subtitle">输入城市名，为你生成精彩的3天旅行攻略</p>
+    </header>
+
+    <!-- Search Section -->
+    <section class="search-section">
+        <div class="search-box">
+            <div class="input-wrapper">
+                <span class="search-icon">🔍</span>
+                <input type="text" id="cityInput" placeholder="请输入目的地城市，如：北京、成都、杭州..." autocomplete="off">
+                <button id="generateBtn" onclick="generateItinerary()">生成攻略</button>
+            </div>
+            <div class="hot-cities">
+                <span class="hot-label">🔥 热门城市：</span>
+                <button class="city-tag" onclick="selectCity('北京')">北京</button>
+                <button class="city-tag" onclick="selectCity('上海')">上海</button>
+                <button class="city-tag" onclick="selectCity('成都')">成都</button>
+                <button class="city-tag" onclick="selectCity('杭州')">杭州</button>
+                <button class="city-tag" onclick="selectCity('西安')">西安</button>
+                <button class="city-tag" onclick="selectCity('重庆')">重庆</button>
+                <button class="city-tag" onclick="selectCity('厦门')">厦门</button>
+                <button class="city-tag" onclick="selectCity('大理')">大理</button>
+            </div>
+        </div>
+    </section>
+
+    <!-- Loading Animation -->
+    <div id="loading" class="loading" style="display:none;">
+        <div class="loading-spinner"></div>
+        <p class="loading-text">正在为你规划旅程<span class="dots">...</span></p>
+    </div>
+
+    <!-- Result Section -->
+    <section id="result" class="result-section" style="display:none;">
+        <div class="result-header">
+            <h2 id="resultTitle"></h2>
+            <p id="resultDesc"></p>
+        </div>
+
+        <!-- City Overview -->
+        <div class="overview-card" id="overviewCard"></div>
+
+        <!-- Day Cards -->
+        <div class="timeline" id="timeline"></div>
+
+        <!-- Tips Section -->
+        <div class="tips-card" id="tipsCard"></div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <p>🌟 旅行攻略生成器 · 让每次出行都充满惊喜</p>
+    </footer>
+
+    <script src="data.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
