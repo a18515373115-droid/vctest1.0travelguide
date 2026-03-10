@@ -3,12 +3,35 @@
 // ⚠️ After deploying to Render, replace this URL with your actual Render URL
 const API_BASE_URL = 'https://vctest1-0travelguide.onrender.com';
 
+// ========== Retry Configuration ==========
+const MAX_RETRIES = 1; // Retry once on failure
+
 // ========== DOM Elements ==========
 const cityInput = document.getElementById('cityInput');
 const loading = document.getElementById('loading');
 const result = document.getElementById('result');
 
 // ========== Utility Functions ==========
+
+// Update loading text with status message
+function updateLoadingText(message) {
+    const loadingTextEl = document.querySelector('.loading-text');
+    if (loadingTextEl) {
+        loadingTextEl.innerHTML = message + '<span class="dots">...</span>';
+    }
+}
+
+// Update loading sub-text (status detail)
+function updateLoadingSubText(message) {
+    let subTextEl = document.querySelector('.loading-subtext');
+    if (!subTextEl) {
+        const loadingEl = document.getElementById('loading');
+        subTextEl = document.createElement('p');
+        subTextEl.className = 'loading-subtext';
+        loadingEl.appendChild(subTextEl);
+    }
+    subTextEl.textContent = message;
+}
 
 // Select city from hot tags
 function selectCity(city) {
@@ -104,49 +127,81 @@ async function generateItinerary() {
     // Show loading
     result.style.display = 'none';
     loading.style.display = 'block';
+    updateLoadingText('正在唤醒服务器');
+    updateLoadingSubText('免费服务器首次请求可能需要 30~60 秒，请耐心等待');
 
     let useAI = false;
     let apiError = '';
+    let lastError = '';
 
-    try {
-        // Call backend API (Render.com with HTTPS) - API Key is safely stored on the server
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 120000);
+    // Retry loop: try up to MAX_RETRIES + 1 times
+    for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+        try {
+            if (attempt === 0) {
+                // First attempt: wake-up phase
+                updateLoadingText('正在唤醒服务器');
+                updateLoadingSubText('免费服务器首次请求可能需要 30~60 秒，请耐心等待');
+            } else {
+                // Retry attempt: server should be awake now
+                updateLoadingText(`第 ${attempt + 1} 次尝试中`);
+                updateLoadingSubText('服务器已唤醒，正在重新请求，速度会快很多');
+            }
 
-        const response = await fetch(`${API_BASE_URL}/api/generate`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ city }),
-            signal: controller.signal
-        });
+            // Start a timer to update the loading text after 10 seconds
+            const phaseTimer = setTimeout(() => {
+                updateLoadingText('正在为你规划旅程');
+                updateLoadingSubText('AI 正在生成专属攻略，请稍候');
+            }, attempt === 0 ? 15000 : 5000);
 
-        clearTimeout(timeoutId);
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 120000);
 
-        const json = await response.json();
+            const response = await fetch(`${API_BASE_URL}/api/generate`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ city }),
+                signal: controller.signal
+            });
 
-        if (json.success && json.data) {
-            useAI = true;
-            loading.style.display = 'none';
-            renderResult(city, json.data, true);
-            result.style.display = 'block';
-            result.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            return;
-        } else if (json.error) {
-            apiError = json.error;
-            console.warn('Backend API error:', apiError);
+            clearTimeout(timeoutId);
+            clearTimeout(phaseTimer);
+
+            const json = await response.json();
+
+            if (json.success && json.data) {
+                useAI = true;
+                loading.style.display = 'none';
+                renderResult(city, json.data, true);
+                result.style.display = 'block';
+                result.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                return;
+            } else if (json.error) {
+                lastError = json.error;
+                console.warn(`Attempt ${attempt + 1} - Backend API error:`, lastError);
+            }
+        } catch (error) {
+            if (error.name === 'AbortError') {
+                lastError = 'Request timeout';
+            } else {
+                lastError = error.message;
+            }
+            console.warn(`Attempt ${attempt + 1} failed:`, lastError);
         }
-    } catch (error) {
-        if (error.name === 'AbortError') {
-            apiError = 'Request timeout';
-        } else {
-            apiError = error.message;
+
+        // If this is not the last attempt, show retry message
+        if (attempt < MAX_RETRIES) {
+            updateLoadingText('请求失败，正在自动重试');
+            updateLoadingSubText(`第 ${attempt + 1} 次请求未成功，2 秒后自动重试`);
+            await new Promise(resolve => setTimeout(resolve, 2000));
         }
-        console.warn('API call failed, falling back to local data:', apiError);
     }
 
-    // Fallback: use local data or random generation
+    // All attempts failed, fallback to local data
+    apiError = lastError;
+    console.warn('All API attempts failed, falling back to local data:', apiError);
+
     loading.style.display = 'none';
     const data = cityData[city] || generateRandomItinerary(city);
     renderResult(city, data, false);
