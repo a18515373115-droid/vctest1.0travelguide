@@ -122,8 +122,8 @@ app.post('/api/generate', (req, res) => {
         });
     });
 
-    // 60 second timeout
-    apiReq.setTimeout(60000, () => {
+    // 120 second timeout (DeepSeek API may take 60-90s on cold start)
+    apiReq.setTimeout(120000, () => {
         console.error(`[${new Date().toISOString()}] API request timeout for: ${city}`);
         apiReq.destroy();
         if (!res.headersSent) {

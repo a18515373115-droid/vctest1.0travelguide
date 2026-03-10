@@ -154,7 +154,7 @@ async function generateItinerary() {
             }, attempt === 0 ? 15000 : 5000);
 
             const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 120000);
+            const timeoutId = setTimeout(() => controller.abort(), 180000);
 
             const response = await fetch(`${API_BASE_URL}/api/generate`, {
                 method: 'POST',
